@@ -1,0 +1,68 @@
+#1.Speech-to-Text Transcription Using Whisper
+import whisper
+
+# Load the Whisper model
+model = whisper.load_model("base")
+
+# Transcribe video audio to text
+result = model.transcribe("sample_video.mp4")
+transcript = result['text']
+
+print("Transcript:")
+print(transcript)
+
+
+
+
+#2. Text Classification Using BERT (via Transformers)
+from transformers import pipeline
+
+# Load a pre-trained BERT pipeline for text classification
+classifier = pipeline("text-classification", model="facebook/bart-large-mnli")
+
+# Run classification on transcript
+response = classifier(transcript)
+print("NLP Classification Result:")
+print(response)
+
+
+
+#3. Frame-Level Image Analysis with CNN (e.g., Deepfake or Bias Detection Placeholder)
+import cv2
+import torch
+from torchvision import models, transforms
+
+# Load a pre-trained ResNet model
+model = models.resnet50(pretrained=True)
+model.eval()
+
+# Load and preprocess a frame from the video
+video = cv2.VideoCapture("sample_video.mp4")
+ret, frame = video.read()
+transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
+])
+input_tensor = transform(frame).unsqueeze(0)
+
+# Predict visual content
+with torch.no_grad():
+    outputs = model(input_tensor)
+
+print("CNN Visual Analysis Output:", outputs.argmax())
+
+
+
+#4. Combining Output into a Summary Report
+report = {
+    "transcription": transcript,
+    "nlp_classification": response,
+    "visual_analysis_frame_1": outputs.argmax().item(),
+    "confidence": result.get('avg_logprob', 'N/A')
+}
+
+print("\n=== Analysis Report ===")
+for key, value in report.items():
+    print(f"{key}: {value}")
+
