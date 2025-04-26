@@ -1,0 +1,132 @@
+#1. Setup: Install Required Libraries
+
+pip install openai-whisper
+pip install torch torchvision
+pip install transformers
+pip install moviepy
+pip install opencv-python
+pip install pandas
+pip install matplotlib
+
+
+#2. Import Libraries
+
+import whisper
+import torch
+from transformers import pipeline
+import moviepy.editor as mp
+import cv2
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+from torchvision import models, transforms
+
+
+
+#3. Transcribe Video Audio Using Whisper
+
+def transcribe_audio(video_path):
+    model = whisper.load_model("base")
+    result = model.transcribe(video_path)
+    transcript = result['text']
+    return transcript
+
+
+
+#4. Analyze Transcript for Misinformation with NLP (BERT/GPT pipeline)
+
+def analyze_text(transcript):
+    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+    labels = ["misinformation", "biased language", "xenophobic statement", "neutral"]
+    results = classifier(transcript, labels)
+    return results
+
+
+
+#5. Extract Video Frames for Visual Bias Analysis
+
+def extract_frames(video_path, output_folder="frames", interval=1):
+    os.makedirs(output_folder, exist_ok=True)
+    vidcap = cv2.VideoCapture(video_path)
+    fps = vidcap.get(cv2.CAP_PROP_FPS)
+    frame_count = 0
+    success, image = vidcap.read()
+    count = 0
+    
+    while success:
+        if count % int(fps * interval) == 0:
+            frame_filename = f"{output_folder}/frame{frame_count}.jpg"
+            cv2.imwrite(frame_filename, image)
+            frame_count += 1
+        success, image = vidcap.read()
+        count += 1
+    vidcap.release()
+
+
+
+#6. Analyze Frames Using CNN (Visual Content Classifier)
+
+def analyze_frames(folder="frames"):
+    model = models.resnet50(pretrained=True)
+    model.eval()
+    preprocess = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((224, 224)),
+        transforms.ToTensor()
+    ])
+    suspicious_frames = []
+    
+    for img_file in os.listdir(folder):
+        if img_file.endswith(".jpg"):
+            img_path = os.path.join(folder, img_file)
+            img = cv2.imread(img_path)
+            img_tensor = preprocess(img).unsqueeze(0)
+            with torch.no_grad():
+                output = model(img_tensor)
+            prediction = output.argmax().item()
+            if prediction in range(800, 850):  # Example classes that might correlate with suspicious visuals
+                suspicious_frames.append(img_file)
+    
+    return suspicious_frames
+
+
+
+#7. Generate and Export Final Analysis Report
+
+def generate_report(transcript_results, frame_results, output_path="report.csv"):
+    data = {
+        "Section": ["Transcript", "Frames"],
+        "Details": [transcript_results, frame_results]
+    }
+    df = pd.DataFrame(data)
+    df.to_csv(output_path, index=False)
+    print(f"Report generated at {output_path}")
+
+
+
+#8. Main Pipeline to Run Everything
+
+def main(video_path):
+    print("[INFO] Starting Transcription...")
+    transcript = transcribe_audio(video_path)
+    
+    print("[INFO] Analyzing Transcript for Misinformation...")
+    text_analysis = analyze_text(transcript)
+    
+    print("[INFO] Extracting Frames...")
+    extract_frames(video_path)
+    
+    print("[INFO] Analyzing Frames for Visual Bias...")
+    frame_analysis = analyze_frames()
+    
+    print("[INFO] Generating Final Report...")
+    generate_report(text_analysis, frame_analysis)
+
+# Example Usage
+if __name__ == "__main__":
+    main("sample_video.mp4")
+
+
+
+
+---
