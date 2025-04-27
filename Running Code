@@ -1,12 +1,12 @@
 #1. Setup: Install Required Libraries
-
-pip install openai-whisper
-pip install torch torchvision
-pip install transformers
-pip install moviepy
-pip install opencv-python
-pip install pandas
-pip install matplotlib
+# Run these lines in separate cells in your Jupyter notebook or in a terminal
+!pip install openai-whisper
+!pip install torch torchvision
+!pip install transformers
+!pip install moviepy
+!pip install opencv-python
+!pip install pandas
+!pip install matplotlib
 
 
 #2. Import Libraries
@@ -52,10 +52,10 @@ def extract_frames(video_path, output_folder="frames", interval=1):
     frame_count = 0
     success, image = vidcap.read()
     count = 0
-    
+
     while success:
         if count % int(fps * interval) == 0:
-            frame_filename = f"{output_folder}/frame{frame_count}.jpg"
+            frame_filename = os.path.join(output_folder, f"frame{frame_count}.jpg")
             cv2.imwrite(frame_filename, image)
             frame_count += 1
         success, image = vidcap.read()
@@ -75,18 +75,20 @@ def analyze_frames(folder="frames"):
         transforms.ToTensor()
     ])
     suspicious_frames = []
-    
+
     for img_file in os.listdir(folder):
         if img_file.endswith(".jpg"):
             img_path = os.path.join(folder, img_file)
             img = cv2.imread(img_path)
+            if img is None:
+                continue # Handle cases where image file might be corrupted
             img_tensor = preprocess(img).unsqueeze(0)
             with torch.no_grad():
                 output = model(img_tensor)
             prediction = output.argmax().item()
-            if prediction in range(800, 850):  # Example classes that might correlate with suspicious visuals
+            if 800 <= prediction <= 850:  # Example classes that might correlate with suspicious visuals
                 suspicious_frames.append(img_file)
-    
+
     return suspicious_frames
 
 
@@ -109,24 +111,21 @@ def generate_report(transcript_results, frame_results, output_path="report.csv")
 def main(video_path):
     print("[INFO] Starting Transcription...")
     transcript = transcribe_audio(video_path)
-    
+
     print("[INFO] Analyzing Transcript for Misinformation...")
     text_analysis = analyze_text(transcript)
-    
+
     print("[INFO] Extracting Frames...")
     extract_frames(video_path)
-    
+
     print("[INFO] Analyzing Frames for Visual Bias...")
     frame_analysis = analyze_frames()
-    
+
     print("[INFO] Generating Final Report...")
     generate_report(text_analysis, frame_analysis)
 
 # Example Usage
 if __name__ == "__main__":
-    main("sample_video.mp4")
-
-
-
-
----
+    # Video path updated to Colab environment location
+    video_path = "/content/Rachel47.mp4"  # Update with the actual path after uploading
+    main(video_path)
